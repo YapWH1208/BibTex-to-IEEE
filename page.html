@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BibTeX to IEEE Citation Converter</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    .dropzone {
+      border: 2px dashed #ccc;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 20px;
+      transition: background-color 0.3s ease;
+    }
+    .dropzone.dragover {
+      background-color: #e9ecef;
+    }
+    textarea {
+      width: 100%;
+      height: 800px;
+      min-height: 400px;
+      margin-bottom: 20px;
+      resize: none;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    .container {
+      padding: 20px;
+    }
+    button {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .copy-btn {
+      margin-top: 10px;
+      background-color: #28a745;
+    }
+    .copy-btn:hover {
+      background-color: #218838;
+    }
+    footer {
+      text-align: center;
+      margin-top: 20px;
+      color: #6c757d;
+    }
+    h2, h3 {
+      color: #343a40;
+    }
+    p {
+      color: #495057;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <a class="navbar-brand" href="#"><strong>BibTeX to IEEE Converter</strong></a>
+    <div class="collapse navbar-collapse">
+      <ul class="navbar-nav ml-auto">
+        <li class="nav-item">
+          <a class="nav-link" href="https://github.com/YapWH1208/Bibtex-to-iEEE">Home</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Main content -->
+  <main class="container">
+    <div class="row">
+      <div class="col-md-10 offset-md-1">
+        <section>
+          <hgroup>
+            <h2>BibTeX to IEEE Citation Converter</h2>
+            <h3>Paste or upload your BibTeX entries below:</h3>
+          </hgroup>
+          <p>Use the text area to paste your BibTeX code, or drag and drop a BibTeX file into the drop zone. The converted IEEE citation will be shown below.</p>
+
+          <!-- Textarea for BibTeX input -->
+          <textarea id="bibtexInput" class="form-control" placeholder="Paste your BibTeX here" wrap="soft"></textarea>
+
+          <!-- Dropzone for file drag-and-drop -->
+          <div class="dropzone" id="dropzone">
+            Drag & Drop your BibTeX file here
+          </div>
+
+          <!-- Button to trigger conversion -->
+          <button class="btn btn-primary" onclick="convertBibTeX()">Convert to IEEE Citation</button>
+
+          <!-- Display the IEEE citation result -->
+          <h3>Converted IEEE Citation:</h3>
+          <p id="ieeeOutput" class="alert alert-secondary">Your citation will appear here.</p>
+          <button class="btn copy-btn" onclick="copyToClipboard()">Copy to Clipboard</button>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="container">
+    <small>Use at your own risks</small>
+  </footer>
+
+  <!-- JavaScript for handling file upload and conversion -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  <script>
+    // Drag and drop functionality
+    const dropzone = document.getElementById('dropzone');
+
+    dropzone.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+
+    dropzone.addEventListener('dragleave', function(e) {
+      dropzone.classList.remove('dragover');
+    });
+
+    dropzone.addEventListener('drop', function(e) {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file && (file.type === 'application/x-bibtex' || file.name.endsWith('.bib'))) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          document.getElementById('bibtexInput').value = event.target.result;
+        };
+        reader.readAsText(file);
+      } else {
+        alert('Please upload a valid .bib BibTeX file');
+      }
+    });
+
+    // Convert BibTeX to IEEE Citation
+    function convertBibTeX() {
+      const bibtexInput = document.getElementById('bibtexInput').value;
+      
+      // Split input into separate entries
+      const entries = bibtexInput.split(/@/).filter(entry => entry.trim());
+      let allOutputs = [];
+
+      // Process each entry
+      entries.forEach(entry => {
+        entry = '@' + entry; // Add back the @ that was removed by split
+        
+        // Parse BibTeX type
+        const typeMatch = entry.match(/@(\w+)\s*{/);
+        const type = typeMatch ? typeMatch[1].toLowerCase() : 'unknown';
+
+        // Common fields
+        const authorMatch = entry.match(/author\s*=\s*{([^}]+)}/i);
+        const titleMatch = entry.match(/title\s*=\s*{([^}]+)}/i);
+        const yearMatch = entry.match(/year\s*=\s*{([^}]+)}/i);
+        let author = authorMatch ? authorMatch[1] : 'Unknown Author';
+        const title = titleMatch ? titleMatch[1] : 'Unknown Title';
+        const year = yearMatch ? yearMatch[1] : 'Unknown Year';
+
+        // Shorten authors if too many
+        const authors = author.split(' and ');
+        if (authors.length > 3) author = `${authors[0]} et al.`;
+
+        let ieeeOutput = '';
+
+        // Handle specific types
+        if (type === 'article') {
+            const journalMatch = entry.match(/journal\s*=\s*{([^}]+)}/i);
+            const volumeMatch = entry.match(/volume\s*=\s*{([^}]+)}/i);
+            const numberMatch = entry.match(/number\s*=\s*{([^}]+)}/i);
+            const pagesMatch = entry.match(/pages\s*=\s*{([^}]+)}/i);
+
+            ieeeOutput = `${author}, "${title}," ${journalMatch ? journalMatch[1] : ''}, vol. ${volumeMatch ? volumeMatch[1] : ''}, no. ${numberMatch ? numberMatch[1] : ''}, pp. ${pagesMatch ? pagesMatch[1] : ''}, ${year}.`;
+        } else if (type === 'book') {
+            const publisherMatch = entry.match(/publisher\s*=\s*{([^}]+)}/i);
+            ieeeOutput = `${author}, *${title}*. ${publisherMatch ? publisherMatch[1] + ',' : ''} ${year}.`;
+        } else if (type === 'inproceedings') {
+            const booktitleMatch = entry.match(/booktitle\s*=\s*{([^}]+)}/i);
+            ieeeOutput = `${author}, "${title}," in *${booktitleMatch ? booktitleMatch[1] : ''}*, ${year}.`;
+        } else if (type === 'misc') {
+            const howpublishedMatch = entry.match(/howpublished\s*=\s*{([^}]+)}/i);
+            const eprintMatch = entry.match(/eprint\s*=\s*{([^}]+)}/i);
+            const archivePrefixMatch = entry.match(/archivePrefix\s*=\s*{([^}]+)}/i);
+            const urlMatch = entry.match(/url\s*=\s*{([^}]+)}/i);
+
+            ieeeOutput = `${author}, "${title}," ${howpublishedMatch ? howpublishedMatch[1] + ',' : ''} ${archivePrefixMatch ? archivePrefixMatch[1] + ':' : ''}${eprintMatch ? eprintMatch[1] + ',' : ''} ${urlMatch ? urlMatch[1] + ',' : ''} ${year}.`;
+        } else if (type === 'techreport') {
+            const institutionMatch = entry.match(/institution\s*=\s*{([^}]+)}/i);
+            const numberMatch = entry.match(/number\s*=\s*{([^}]+)}/i);
+            ieeeOutput = `${author}, "${title}," Tech. Rep. ${numberMatch ? numberMatch[1] + ',' : ''} ${institutionMatch ? institutionMatch[1] + ',' : ''} ${year}.`;
+        } else {
+            ieeeOutput = `Unsupported or unknown BibTeX type.`;
+        }
+
+        // Clean up possible empty sections
+        ieeeOutput = ieeeOutput.replace(/,\s*,/g, ', ').replace(/,\s*\./g, '.');
+        
+        // Add to collection
+        allOutputs.push(ieeeOutput);
+      });
+
+      // Output all citations with line breaks
+      document.getElementById('ieeeOutput').innerHTML = allOutputs.join('<br><br>');
+    }
+
+    // Copy to clipboard functionality
+    function copyToClipboard() {
+      // Create a temporary div to handle HTML conversion
+      const temp = document.createElement('div');
+      temp.innerHTML = document.getElementById('ieeeOutput').innerHTML;
+      
+      // Get text content with proper line breaks
+      const citations = [];
+      temp.childNodes.forEach(node => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          citations.push(node.textContent.trim());
+        } else if (node.nodeName === 'BR') {
+          citations.push('');  // Add empty line for spacing
+        }
+      });
+      
+      // Filter out empty strings and join with double line breaks
+      const formattedText = citations
+        .filter(citation => citation.length > 0)
+        .join('\n');
+      
+      navigator.clipboard.writeText(formattedText).then(() => {
+        alert('Citation copied to clipboard!');
+      }).catch(err => {
+        alert('Failed to copy citation: ' + err);
+      });
+    }
+  </script>
+</body>
+</html>
